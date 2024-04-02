@@ -3,9 +3,10 @@ import { Tab } from 'types'
 const MEET_URL = 'https://meet.google.com/'
 const MEET_URL_AST = 'https://meet.google.com/*'
 
-const TEAMS_URL = 'https://teams.microsoft.com/v2/'
-const TEAMS_URL_AST = 'https://teams.microsoft.com/v2/*'
-
+const TEAMS_URL = 'https://teams.microsoft.com/_'
+const TEAMS_URL_AST = 'https://teams.microsoft.com/_*'
+const TEAMS_V2_URL = 'https://teams.microsoft.com/v2/'
+const TEAMS_V2_URL_AST = 'https://teams.microsoft.com/v2/*'
 // const ICON_GRAY48 = chrome.runtime.getURL('icons/M_gray48.png')
 const ICON_GRAY128 = chrome.runtime.getURL('icons/M_gray128.png')
 const ICON_RED128 = chrome.runtime.getURL('icons/M_red128.png')
@@ -52,6 +53,13 @@ const teams: Tab = {
   alerts: false,
   count: 0,
 }
+const teams_v2: Tab = {
+  tabId: -1,
+  onlyTab: false,
+  isOpen: false,
+  alerts: false,
+  count: 0,
+}
 
 const assessTeamsTabs = () => {
   chrome.tabs.query({ url: TEAMS_URL_AST }, (tabs) => {
@@ -61,6 +69,15 @@ const assessTeamsTabs = () => {
     teams.count = checkMeetingTabsResponse.count
     teams.alerts = checkMeetingTabsResponse.alerts
     teams.onlyTab = checkMeetingTabsResponse.onlyTab
+  })
+
+  chrome.tabs.query({ url: TEAMS_V2_URL_AST }, (tabs) => {
+    const checkMeetingTabsResponse = checkMeetingTabs(tabs, TEAMS_V2_URL, 'Microsoft Teams')
+    teams_v2.isOpen = checkMeetingTabsResponse.isOpen
+    teams_v2.tabId = checkMeetingTabsResponse.tabId
+    teams_v2.count = checkMeetingTabsResponse.count
+    teams_v2.alerts = checkMeetingTabsResponse.alerts
+    teams_v2.onlyTab = checkMeetingTabsResponse.onlyTab
   })
 }
 
@@ -75,8 +92,8 @@ const sendKeypress = (tabId: number, url: string, filePath: string) => {
     }
   })
 }
-const sendKeypressMeet = (tabId: number) => sendKeypress(tabId, MEET_URL_AST, 'src/sendKeypressMeet.js')
-const sendKeypressTeams = (tabId: number) => sendKeypress(tabId, TEAMS_URL_AST, 'src/sendKeypressTeams.js')
+const sendKeypressMeet = (tabId: number) => sendKeypress(tabId, MEET_URL_AST, 'dist/sendKeypressMeet.js')
+const sendKeypressTeams = (tabId: number, url: string) => sendKeypress(tabId, url, 'dist/sendKeypressTeams.js')
 
 // Research meet is active and mute status
 const researchTab = (url: string, tabCount: number, tabId: number, func: any) => {
@@ -117,8 +134,7 @@ const checkMuteTeams = () => {
   let muted = false
   let joined_status = true
   const microphoneButton = document.getElementById('microphone-button')
-  // TODO: もう少しいい要素があるはず
-  muted = microphoneButton!.dataset.trackModuleNameNew == 'unMute'
+  muted = microphoneButton!.dataset.state == 'mic-off'
   return [muted, joined_status]
 }
 
@@ -141,7 +157,7 @@ const checkMeetingTabs = (tabs: Array<chrome.tabs.Tab>, url: string, serviceName
   })
 
   // Checks if only tab is open
-  // const onlyTab = response.isOpen && response.count == 0
+  // response.onlyTab = response.isOpen && response.count == 0
 
   // If tabs are open set alarm, so that they can be monitored
   if (response.count > 0) {
@@ -194,21 +210,24 @@ const run = (isKeypress: boolean) => {
   assessTeamsTabs()
 
   // タブが開いてなければ何もしない
-  if ((meet.count + teams.count) <= 0) {
+  if ((meet.count + teams.count + teams_v2.count) <= 0) {
     return
   }
 
   // meetのみの場合
-  if (meet.count > 0 && teams.count <= 0) {
+  if (meet.count > 0 && (teams.count + teams_v2.count) <= 0) {
     if (isKeypress) sendKeypressMeet(meet.tabId)
     setTimeout(() => researchTabMeet(MEET_URL_AST, meet.count, meet.tabId), 50)
     return
   }
 
   // teamsのみの場合
-  if (meet.count <= 0 && teams.count > 0) {
-    if (isKeypress) sendKeypressTeams(teams.tabId)
-    setTimeout(() => researchTabTeams(TEAMS_URL_AST, teams.count, teams.tabId), 50)
+  if (meet.count <= 0 && (teams.count + teams_v2.count) > 0 && (teams.count <= 0 || teams_v2.count <= 0)) {
+    const tabInfo: Tab = (teams.count > 0) ? teams : teams_v2
+    const url: string = (teams.count > 0) ? TEAMS_URL_AST : TEAMS_V2_URL_AST
+
+    if (isKeypress) sendKeypressTeams(tabInfo.tabId, url)
+    setTimeout(() => researchTabTeams(url, tabInfo.count, tabInfo.tabId), 50)
     return
   }
 
@@ -217,7 +236,7 @@ const run = (isKeypress: boolean) => {
     {
       type: 'basic',
       title: '',
-      message: `You have ${meet.count + teams.count} Meet & Teams open. Close all but one.`,
+      message: `You have ${meet.count + teams.count + teams_v2.count} Meet & Teams open. Close all but one.`,
       iconUrl: ICON_GRAY128,
     },
   )
