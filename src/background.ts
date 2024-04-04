@@ -7,6 +7,14 @@ const TEAMS_URL = 'https://teams.microsoft.com/_'
 const TEAMS_URL_AST = 'https://teams.microsoft.com/_*'
 const TEAMS_V2_URL = 'https://teams.microsoft.com/v2/'
 const TEAMS_V2_URL_AST = 'https://teams.microsoft.com/v2/*'
+
+type URL = typeof MEET_URL | typeof TEAMS_URL | typeof TEAMS_V2_URL
+const MEETING_HASH_PROPERTIES = {
+  [MEET_URL]: '',
+  [TEAMS_URL]: '#/modern-calling/',
+  [TEAMS_V2_URL]: '',
+}
+
 // const ICON_GRAY48 = chrome.runtime.getURL('icons/M_gray48.png')
 const ICON_GRAY128 = chrome.runtime.getURL('icons/M_gray128.png')
 const ICON_RED128 = chrome.runtime.getURL('icons/M_red128.png')
@@ -138,7 +146,7 @@ const checkMuteTeams = () => {
   return [muted, joined_status]
 }
 
-const checkMeetingTabs = (tabs: Array<chrome.tabs.Tab>, url: string, serviceName: string = 'Meeting Service'): Tab => {
+const checkMeetingTabs = (tabs: Array<chrome.tabs.Tab>, url: URL, serviceName: string = 'Meeting Service'): Tab => {
   const response: Tab = {
     isOpen: false,
     tabId: -1,
@@ -149,9 +157,10 @@ const checkMeetingTabs = (tabs: Array<chrome.tabs.Tab>, url: string, serviceName
 
   // Checks if meeting tabs is open and how many
   tabs.forEach((item, _index) => {
+    // TODO: この処理いる？
     if (item.url == url) {
       response.isOpen = true
-    } else {
+    } else if (item.url?.startsWith(url + MEETING_HASH_PROPERTIES[url])) {
       response.count++
     }
   })
