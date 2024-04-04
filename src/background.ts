@@ -12,7 +12,7 @@ type URL = typeof MEET_URL | typeof TEAMS_URL | typeof TEAMS_V2_URL
 const MEETING_HASH_PROPERTIES = {
   [MEET_URL]: '',
   [TEAMS_URL]: '#/modern-calling/',
-  [TEAMS_V2_URL]: '',
+  [TEAMS_V2_URL]: '', // FIXME: おそらく何か指定が必要
 }
 
 // const ICON_GRAY48 = chrome.runtime.getURL('icons/M_gray48.png')
