@@ -9,11 +9,26 @@ const TEAMS_V2_URL = 'https://teams.microsoft.com/v2/'
 const TEAMS_V2_URL_AST = 'https://teams.microsoft.com/v2/*'
 
 type URL = typeof MEET_URL | typeof TEAMS_URL | typeof TEAMS_V2_URL
-const MEETING_HASH_PROPERTIES = {
-  [MEET_URL]: '',
-  [TEAMS_URL]: '#/modern-calling/',
-  [TEAMS_V2_URL]: '', // FIXME: おそらく何か指定が必要
+
+// type URL_PROPERTY = 'hash' | 'host' | 'hostname' | 'origin' | 'pathname' | 'search'
+
+// type MEETING_URL_PROPERTIES_TYPE = Record<URL, Record<URL_PROPERTY, String> | {}>
+
+const MEETING_URL_PROPERTIES = {
+  [MEET_URL]: {},
+  [TEAMS_URL]: {
+    hash: '#/modern-calling/',
+  },
+  [TEAMS_V2_URL]: {}, // FIXME: おそらく何か指定が必要
 }
+
+// type Entries<T> = (keyof T extends infer U
+//   ? U extends keyof T
+//     ? [U, T[U]]
+//     : never
+//   : never)[]
+
+// type MEETING_URL_PROPERTIES_TYPE_ = Entries<MEETING_URL_PROPERTIES>
 
 // const ICON_GRAY48 = chrome.runtime.getURL('icons/M_gray48.png')
 const ICON_GRAY128 = chrome.runtime.getURL('icons/M_gray128.png')
@@ -157,13 +172,30 @@ const checkMeetingTabs = (tabs: Array<chrome.tabs.Tab>, url: URL, serviceName: s
   }
 
   // Checks if meeting tabs is open and how many
-  tabs.forEach((item, _index) => {
+  tabs.forEach((item, index) => {
     // TODO: この処理いる？
     if (item.url == url) {
       response.isOpen = true
-    } else if (item.url?.startsWith(url + MEETING_HASH_PROPERTIES[url])) {
-      response.count++
+      return
     }
+    // 設定がない場合
+    if (Object.keys(MEETING_URL_PROPERTIES[url]).length === 0) {
+      response.tabId = index
+      response.count++
+      return
+    }
+
+    for (const [key, value] of Object.entries(MEETING_URL_PROPERTIES[url])) {
+      const urlObject = new URL(url)
+      // FIXME: 型定義が当たるように実装見直し予定
+      // @ts-ignore
+      if (urlObject[key] !== value) {
+        // 設定に乖離があったらカウントしない
+        return
+      }
+    }
+    response.tabId = index
+    response.count++
   })
 
   // Checks if only tab is open
@@ -192,7 +224,7 @@ const checkMeetingTabs = (tabs: Array<chrome.tabs.Tab>, url: URL, serviceName: s
   }
 
   // If an alert hasn't been triggered and if more than one tabs is open, alert to close some
-  tabs.forEach((_item, index) => {
+  tabs.forEach((_item, _index) => {
     if (!response.alerts) {
       if (response.count > 1) {
         chrome.notifications.create(
@@ -206,9 +238,6 @@ const checkMeetingTabs = (tabs: Array<chrome.tabs.Tab>, url: URL, serviceName: s
         )
         response.alerts = true
         chrome.action.setBadgeText({ text: 'Err' })
-      } else {
-        // If only one meet is open and no alerts have been triggered, set x with the id of the tab to interact with
-        response.tabId = index
       }
     }
   })
