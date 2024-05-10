@@ -173,6 +173,9 @@ const checkMeetingTabs = (tabs: Array<chrome.tabs.Tab>, url: URL, serviceName: s
 
   // Checks if meeting tabs is open and how many
   tabs.forEach((item, index) => {
+    if (item.url === undefined) {
+      return
+    }
     // TODO: この処理いる？
     if (item.url == url) {
       response.isOpen = true
@@ -186,7 +189,7 @@ const checkMeetingTabs = (tabs: Array<chrome.tabs.Tab>, url: URL, serviceName: s
     }
 
     for (const [key, value] of Object.entries(MEETING_URL_PROPERTIES[url])) {
-      const urlObject = new URL(url)
+      const urlObject = new URL(item.url)
       // FIXME: 型定義が当たるように実装見直し予定
       // @ts-ignore
       if (urlObject[key] !== value) {
