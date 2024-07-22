@@ -156,8 +156,7 @@ const checkMuteMeet = () => {
 const checkMuteTeams = () => {
   let muted = false
   let joined_status = true
-  const iframe = document.getElementsByTagName("iframe")[0].contentWindow
-  const microphoneButton = iframe?.document?.getElementById('microphone-button')
+  const microphoneButton = document.getElementById('microphone-button')
   muted = microphoneButton!.dataset.state == 'mic-off'
   return [muted, joined_status]
 }
