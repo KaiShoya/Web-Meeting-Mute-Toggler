@@ -30,6 +30,13 @@ export default defineConfig((opt) => {
         // },
         output: {
           entryFileNames: '[name].js',
+          // Preserve the order of AbstractClass at the top
+          manualChunks(id) {
+            if (id.includes('AbstractClass')) {
+              return 'abstract-class';
+            }
+            return null;
+          },
         },
       },
     },
